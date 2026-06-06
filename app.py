@@ -30,7 +30,7 @@ def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
     【輸出限制】你必須「嚴格」回傳一個標準的 JSON 物件結構。
     {
       "parent_comeback": "（由你現場即興大罵的反擊台詞）",
-      "anger_change": (整數。頂嘴給 +20到+35；極度敷衍給 +15；態度極好給 -15到-25),
+      "anger_change": (整數。請嚴格遵守以下評分標準：1.【頂嘴反抗】給 +15到+25；2.【找藉口或敷衍】給 +5到+15；3.【明確道歉、認錯或態度軟化】必須給 -20到-40。注意：只要玩家有表達「對不起」、「抱歉」或「我錯了」的意涵，分數就【絕對必須是負數】！),
       "status": "NORMAL"
     }
     """
@@ -52,8 +52,7 @@ def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
         )
         return json.loads(response.text.strip())
     except Exception as e:
-        return {"parent_comeback": "『你現在是裝聾作啞，不說話是什麼意思？』", "anger_change": 15}
-
+        return {"parent_comeback": "『你現在是裝聾作啞，不說話是什麼意思？』", "anger_change": 10}
 @app.route("/")
 def index():
     session["stage_idx"] = 0
