@@ -6,10 +6,9 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-# 這是為了維護 Session 安全，請保持這行設定
-app.secret_key = "secret_key_for_session"
+app.secret_key = "my_secret_key"
 
-# 從系統環境變數讀取 API Key (部署到 Render 時，請在 Render 後台設定此變數)
+# 確保 Render 雲端有設定 GEMINI_API_KEY 環境變數
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -33,12 +32,8 @@ STAGES = json.loads(game_story)["stages"]
 
 def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
     system_instruction = """
-    你正在扮演家長怒氣生存遊戲中的長輩。性格硬核、不講理、擅長情緒勒索。
-    請嚴格根據場景主題大罵，並給予評分：
-    1.【頂嘴反抗】+15~25；
-    2.【找藉口】+5~15；
-    3.【明確道歉/認錯】必須給 -20~-40。
-    JSON格式: {"parent_comeback": "...", "anger_change": 10}
+    你正在扮演家長怒氣生存遊戲中的長輩。請嚴格根據場景主題大罵。
+    若玩家道歉，給予負分。JSON格式: {"parent_comeback": "...", "anger_change": 10}
     """
     prompt = f"{system_instruction}\n主題:{stage_task}\n上句:{parent_speech}\n孩子說:{user_reply}\n目前怒氣:{current_anger}"
     try:
@@ -53,15 +48,12 @@ def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
 
 @app.route("/")
 def index():
-    session["stage_idx"] = 0
-    session["anger"] = 80
-    session["current_speech"] = STAGES[0]["speech"]
     return render_template("index.html")
 
 @app.route("/api/change_stage", methods=["POST"])
 def change_stage():
-    new_idx = request.json.get("stage_idx", 0)
-    session["stage_idx"] = new_idx if 0 <= new_idx < len(STAGES) else 0
+    idx = request.json.get("stage_idx", 0)
+    session["stage_idx"] = idx if 0 <= idx < len(STAGES) else 0
     session["anger"] = 80
     session["current_speech"] = STAGES[session["stage_idx"]]["speech"]
     return jsonify({"parent_speech": session["current_speech"], "anger": 80, "stage_task": STAGES[session["stage_idx"]]["task"]})
@@ -72,25 +64,14 @@ def reply():
     ai_result = call_gemini_api(STAGES[session["stage_idx"]]["task"], session["current_speech"], user_reply, session["anger"])
     
     score = ai_result.get("anger_change", 10)
-    
-    # 強制道歉降火機制
+    # 強制道歉判定
     if any(k in user_reply.lower() for k in ["對不起", "抱歉", "我錯", "歹勢", "sorry"]):
         score = -30
 
     session["anger"] = max(0, min(120, session["anger"] + score))
     session["current_speech"] = ai_result.get("parent_comeback", "...")
     
-    status = "PROCEED"
-    if session["anger"] >= 120: status = "GAME_OVER"
-    elif session["anger"] <= 0:
-        if session["stage_idx"] < len(STAGES) - 1:
-            session["stage_idx"] += 1
-            session["anger"] = 60
-            session["current_speech"] = STAGES[session["stage_idx"]]["speech"]
-            status = "NEXT_STAGE"
-        else: status = "GAME_WIN"
-
-    return jsonify({"parent_speech": session["current_speech"], "anger": session["anger"], "stage_task": STAGES[session["stage_idx"]]["task"], "status": status})
+    return jsonify({"parent_speech": session["current_speech"], "anger": session["anger"], "stage_task": STAGES[session["stage_idx"]]["task"], "status": "OK"})
 
 if __name__ == "__main__":
     app.run(debug=True)

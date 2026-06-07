@@ -39,10 +39,13 @@
             document.getElementById('chat-history').innerHTML = `<div class="msg">👵 長輩：『${data.parent_speech}』</div>`;
             document.getElementById('anger-bar').style.width = '66.6%';
             currentAnger = 80;
+            document.getElementById('anger-text').innerText = `🔥 家長怒氣值: 80 / 120`;
         }
 
         async function sendReply() {
-            const reply = document.getElementById('user-reply').value;
+            const inputEl = document.getElementById('user-reply');
+            const reply = inputEl.value;
+            if(!reply) return;
             const res = await fetch('/api/reply', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reply: reply}) });
             const data = await res.json();
             
@@ -50,8 +53,9 @@
             currentAnger = data.anger;
             
             document.getElementById('chat-history').innerHTML += `<div class="msg">😎 你：${reply}</div><div class="msg">👵 長輩：『${data.parent_speech}』</div>`;
+            document.getElementById('anger-text').innerText = `🔥 家長怒氣值: ${data.anger} / 120`;
             document.getElementById('anger-bar').style.width = `${(data.anger/120)*100}%`;
-            if(data.status === "NEXT_STAGE") { document.getElementById('stage-select').value = parseInt(document.getElementById('stage-select').value) + 1; }
+            inputEl.value = '';
         }
     </script>
 </body>
