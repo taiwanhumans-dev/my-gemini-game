@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session
 import json
-import random
 import os
 from google import genai
 from google.genai import types
@@ -8,7 +7,6 @@ from google.genai import types
 app = Flask(__name__)
 app.secret_key = "my_secret_key"
 
-# 確保 Render 雲端有設定 GEMINI_API_KEY 環境變數
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -31,17 +29,10 @@ game_story = """
 STAGES = json.loads(game_story)["stages"]
 
 def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
-    system_instruction = """
-    你正在扮演家長怒氣生存遊戲中的長輩。請嚴格根據場景主題大罵。
-    若玩家道歉，給予負分。JSON格式: {"parent_comeback": "...", "anger_change": 10}
-    """
+    system_instruction = "你扮演硬核家長，擅長情緒勒索。請根據場景大罵，且必須評分。若玩家道歉則強烈給負分。JSON格式: {\"parent_comeback\": \"...\", \"anger_change\": 10}"
     prompt = f"{system_instruction}\n主題:{stage_task}\n上句:{parent_speech}\n孩子說:{user_reply}\n目前怒氣:{current_anger}"
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json")
-        )
+        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt, config=types.GenerateContentConfig(response_mime_type="application/json"))
         return json.loads(response.text.strip())
     except:
         return {"parent_comeback": "『你現在是裝聾作啞，不說話是什麼意思？』", "anger_change": 10}
@@ -54,24 +45,21 @@ def index():
 def change_stage():
     idx = request.json.get("stage_idx", 0)
     session["stage_idx"] = idx if 0 <= idx < len(STAGES) else 0
-    session["anger"] = 80
-    session["current_speech"] = STAGES[session["stage_idx"]]["speech"]
-    return jsonify({"parent_speech": session["current_speech"], "anger": 80, "stage_task": STAGES[session["stage_idx"]]["task"]})
+    return jsonify({"parent_speech": STAGES[session["stage_idx"]]["speech"], "anger": 80, "stage_task": STAGES[session["stage_idx"]]["task"]})
 
 @app.route("/api/reply", methods=["POST"])
 def reply():
     user_reply = request.json.get("reply", "").strip()
-    ai_result = call_gemini_api(STAGES[session["stage_idx"]]["task"], session["current_speech"], user_reply, session["anger"])
+    ai_result = call_gemini_api(STAGES[session["stage_idx"]]["task"], session.get("last_speech", STAGES[session["stage_idx"]]["speech"]), user_reply, session.get("anger", 80))
     
     score = ai_result.get("anger_change", 10)
-    # 強制道歉判定
     if any(k in user_reply.lower() for k in ["對不起", "抱歉", "我錯", "歹勢", "sorry"]):
         score = -30
 
-    session["anger"] = max(0, min(120, session["anger"] + score))
-    session["current_speech"] = ai_result.get("parent_comeback", "...")
-    
-    return jsonify({"parent_speech": session["current_speech"], "anger": session["anger"], "stage_task": STAGES[session["stage_idx"]]["task"], "status": "OK"})
+    anger = max(0, min(120, session.get("anger", 80) + score))
+    session["anger"] = anger
+    session["last_speech"] = ai_result.get("parent_comeback", "...")
+    return jsonify({"parent_speech": session["last_speech"], "anger": anger})
 
 if __name__ == "__main__":
     app.run(debug=True)
