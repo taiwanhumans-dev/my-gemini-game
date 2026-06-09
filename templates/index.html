@@ -5,16 +5,23 @@
     <title>家長怒氣生存遊戲</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 20px auto; background: #f0f2f5; padding: 10px; transition: background 0.5s; }
-        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .progress-bar { width: 100%; background: #e4e6eb; height: 24px; border-radius: 12px; overflow: hidden; margin: 20px 0; }
-        .progress-fill { height: 100%; background: #ff4d4d; width: 66.6%; transition: width 0.4s; }
+        .card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
+        .overlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 10; }
+        .modal { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 80%; }
         .history { height: 350px; overflow-y: auto; padding: 15px; background: #e5ddd5; border-radius: 15px; margin-bottom: 15px; display: flex; flex-direction: column; }
-        .msg { max-width: 80%; margin: 8px; padding: 10px 15px; border-radius: 18px; line-height: 1.4; }
-        .parent-msg { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
-        .user-msg { align-self: flex-end; background: #86efac; color: #064e3b; border-bottom-right-radius: 2px; }
+        .msg { max-width: 80%; margin: 8px; padding: 10px 15px; border-radius: 18px; }
+        .parent-msg { align-self: flex-start; background: white; }
+        .user-msg { align-self: flex-end; background: #86efac; color: #064e3b; }
     </style>
 </head>
 <body>
+    <div id="intro-modal" class="overlay">
+        <div class="modal">
+            <h2 id="intro-task">請選擇關卡</h2>
+            <p id="intro-desc">歡迎挑戰家長怒氣生存遊戲，請從選單開始你的旅程。</p>
+            <button onclick="startGame()">開始挑戰</button>
+        </div>
+    </div>
     <div class="card">
         <h2>🤬 家長怒氣生存遊戲</h2>
         <select id="stage-select" onchange="changeStage()">
@@ -22,11 +29,15 @@
             <option value="3">4. 晚餐遲到</option><option value="4">5. 廚房洗碗</option><option value="5">6. 巷口垃圾</option>
             <option value="6">7. 換裝見人</option><option value="7">8. 房間整理</option><option value="8">9. 開箱包裹</option><option value="9">10. 深夜水果</option>
         </select>
-        <div class="progress-bar"><div id="anger-bar" class="progress-fill"></div></div>
-        <p id="anger-text">🔥 家長怒氣值: 80 / 120</p>
-        <div class="history" id="chat-history"><div class="msg parent-msg">👵 『你還知道要回來啊？』</div></div>
+        <div class="history" id="chat-history"></div>
         <input type="text" id="user-reply" placeholder="輸入回話...">
         <button onclick="sendReply()">送出</button>
+    </div>
+    <div id="game-modal" class="overlay" style="display:none;">
+        <div class="modal">
+            <h2 id="modal-title">挑戰結果</h2>
+            <button onclick="location.reload()">重新遊玩</button>
+        </div>
     </div>
     <audio id="angry-sound" src="/static/angry.mp3"></audio>
 
@@ -34,15 +45,18 @@
         let currentAnger = 80;
         const bgs = ["#f0f2f5","#e8f5e9","#fff3e0","#fce4ec","#e3f2fd","#f3e5f5","#fff9c4","#efebe9","#e0f7fa","#fbe9e7"];
 
+        function startGame() { document.getElementById('intro-modal').style.display = 'none'; document.querySelector('.card').style.display = 'block'; }
+        
         async function changeStage() {
             const idx = parseInt(document.getElementById('stage-select').value);
             const res = await fetch('/api/change_stage', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({stage_idx: idx}) });
             const data = await res.json();
             document.body.style.backgroundColor = bgs[idx];
+            document.getElementById('intro-modal').style.display = 'flex';
+            document.getElementById('intro-task').innerText = data.stage_task;
+            document.getElementById('intro-desc').innerText = data.desc;
             document.getElementById('chat-history').innerHTML = `<div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
             currentAnger = 80;
-            document.getElementById('anger-bar').style.width = '66.6%';
-            document.getElementById('anger-text').innerText = `🔥 家長怒氣值: 80 / 120`;
         }
 
         async function sendReply() {
@@ -50,14 +64,12 @@
             const res = await fetch('/api/reply', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({reply: input.value}) });
             const data = await res.json();
             const history = document.getElementById('chat-history');
-            
             history.innerHTML += `<div class="msg user-msg">😎 ${input.value}</div><div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
             if (data.anger > currentAnger) document.getElementById('angry-sound').play();
             currentAnger = data.anger;
             history.scrollTop = history.scrollHeight;
-            document.getElementById('anger-text').innerText = `🔥 家長怒氣值: ${data.anger} / 120`;
-            document.getElementById('anger-bar').style.width = `${(data.anger/120)*100}%`;
             input.value = '';
+            if (data.status !== "OK") { document.getElementById('game-modal').style.display = 'flex'; document.getElementById('modal-title').innerText = data.status === "WIN" ? "🎉 挑戰成功！" : "💀 挑戰失敗！"; }
         }
     </script>
 </body>
