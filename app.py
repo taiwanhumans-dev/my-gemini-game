@@ -5,14 +5,14 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-# 金鑰安全加密字串，用於維護 Flask Session 的穩定性
-app.secret_key = "hardcore_parent_survival_secret_key"
+# 用於加密 Session 的安全金鑰
+app.secret_key = "hardcore_parent_network_armor_key"
 
-# 雲端安全架構：從系統環境變數讀取 API Key，防止金鑰外洩
+# 雲端安全架構：從系統環境變數讀取 API Key
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 10 大精心編排的生活化、生動關卡故事資料庫
+# 10 大精心編排的生活化關卡故事資料庫
 game_story = """
 {
   "stages": [
@@ -24,7 +24,7 @@ game_story = """
     {"id": 6, "task": "巷口垃圾", "desc": "垃圾車的音樂從巷口傳來，你正窩在沙發上當馬鈴薯，長輩突然拿著那包發臭的垃圾直接塞到你懷裡...", "speech": "垃圾車來了啦！還在那邊看電視？還不快點去追！你是要等垃圾長腳自己跑出去喔？"},
     {"id": 7, "task": "換裝見人", "desc": "親戚要來家裡作客，你隨手穿了一件破洞牛仔褲走出來，長輩瞬間覺得面子掛不住，臉色鐵青...", "speech": "穿這什麼破爛牛仔褲？乞丐是不是？等下親戚要來，你是想讓人家看我們家笑話喔？"},
     {"id": 8, "task": "房間整理", "desc": "長輩今天突然心情好幫你換床單，但一打開房門，那股積累了半年的髒衣服味道撲面而來...", "speech": "看你這房間，豬窩都比你乾淨！連下腳的地方都沒有，到底什麼時候要清？"},
-    {"id": 9, "task": "開箱包裹", "desc": "玄關堆滿了你這週買的網購商品，長輩正拿著美工刀站在旁邊，準備把包裹一一「驗屍」...", "speech": "防包裹又是什麼？整天買這些沒用的垃圾，錢多喔？賺那一點點錢都不夠你亂花！"},
+    {"id": 9, "task": "開箱包裹", "desc": "玄關堆滿了你這週買的網購商品，長輩正拿著美工刀站在旁邊，準備把包裹一一「驗屍」...", "speech": "這包裹又是什麼？整天買這些沒用的垃圾，錢多喔？賺那一點點錢都不夠你亂花！"},
     {"id": 10, "task": "深夜水果", "desc": "已經凌晨兩點，你還在螢幕前苦戰，長輩端著一盤切好的蘋果走進來，雖然是在送水果，但語氣充滿威脅...", "speech": "蘋果切好了啦，吃一吃快點去睡覺，別再熬夜了，你是想把自己搞死是不是？"}
   ]
 }
@@ -48,12 +48,11 @@ def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
         )
         return json.loads(response.text.strip())
     except:
-        # 防呆機制：若遠端連線異常，觸發此預設回傳，確保遊戲不崩潰
-        return {"parent_comeback": "『你現在是裝聾作啞，不說話是什麼意思？』", "anger_change": 15}
+        # 核心修改：網路異常時打上 error 標記，不再硬塞會讓人出戲的罐頭台詞
+        return {"is_error": True}
 
 @app.route("/")
 def index():
-    # 初始化遊戲狀態，清除過往舊 session
     session["stage_idx"] = 0
     session["anger"] = 80
     session["last_speech"] = STAGES[0]["speech"]
@@ -62,7 +61,6 @@ def index():
 @app.route("/api/change_stage", methods=["POST"])
 def change_stage():
     idx = request.json.get("stage_idx", 0)
-    # 防呆越界判定
     session["stage_idx"] = idx if 0 <= idx < len(STAGES) else 0
     session["anger"] = 80
     stage_data = STAGES[session["stage_idx"]]
@@ -80,7 +78,7 @@ def reply():
     user_reply = request.json.get("reply", "").strip()
     current_stage = STAGES[session.get("stage_idx", 0)]
     
-    # 呼叫 AI 生成對話與原始評分
+    # 呼叫 AI 獲取評分
     ai_result = call_gemini_api(
         current_stage["task"], 
         session.get("last_speech", current_stage["speech"]), 
@@ -88,19 +86,23 @@ def reply():
         session.get("anger", 80)
     )
     
+    # 核心修改：如果判定 Gemini API 連線異常，立刻回傳網路錯誤狀態給前端攔截
+    if ai_result.get("is_error"):
+        return jsonify({"status": "NETWORK_ERROR"})
+
     score = ai_result.get("anger_change", 10)
     
-    # 🛠️ 【全端整合核心：後端關鍵字攔截網（霸王條款）】
+    # 後端防禦性攔截（道歉霸王條款）
     apology_keywords = ["對不起", "抱歉", "我錯", "歹勢", "sorry"]
     if any(k in user_reply.lower() for k in apology_keywords):
-        score = -30  # 強制將數值覆蓋為大幅度扣分（降火）
+        score = -30  
 
-    # 計算並限制怒氣值區間在 0 ~ 120 之間
+    # 計算新怒氣值（範圍限制在 0~120）
     anger = max(0, min(120, session.get("anger", 80) + score))
     session["anger"] = anger
     session["last_speech"] = ai_result.get("parent_comeback", "...")
     
-    # 精準判定勝負狀態發送給前端
+    # 勝負判定
     status = "WIN" if anger <= 0 else ("LOSE" if anger >= 120 else "OK")
     
     return jsonify({

@@ -3,42 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家長怒氣生存遊戲 - 終極全端版</title>
+    <title>家長怒氣生存遊戲 - 網路黃金防禦版</title>
     <style>
-        /* 全域排版微調，加入流暢的背景變色動畫 */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 20px auto; background: #f0f2f5; padding: 10px; transition: background 0.5s ease; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: none; }
-        
-        /* 關卡選單樣式優化 */
         select { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccd0d5; font-size: 16px; margin-bottom: 15px; outline: none; }
-        
-        /* 現代感血條（進度條）樣式 */
         .progress-bar { width: 100%; background: #e4e6eb; height: 20px; border-radius: 10px; overflow: hidden; margin-top: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff4d4d); width: 66.6%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         #anger-text { font-weight: bold; color: #4b5563; margin-top: 5px; font-size: 14px; text-align: right; }
         
-        /* 核心：仿社交軟體（LINE/IG）氣泡式通訊排版 */
+        /* LINE 風格對話框架構 */
         .history { height: 380px; overflow-y: auto; padding: 15px; background: #e5ddd5; border-radius: 15px; margin: 15px 0; display: flex; flex-direction: column; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); }
         .msg { max-width: 80%; margin: 6px 0; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
-        
-        /* 長輩對話框：左側置白，維持單邊直角質感 */
         .parent-msg { align-self: flex-start; background: white; color: #1c1e21; border-bottom-left-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        /* 玩家對話框：右側置綠，凸顯傳送感 */
         .user-msg { align-self: flex-end; background: #86efac; color: #064e3b; border-bottom-right-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         
-        /* 輸入控制區塊 */
         .input-area { display: flex; gap: 10px; }
         input[type="text"] { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ccd0d5; font-size: 15px; outline: none; }
+        input[type="text"]:disabled { background: #f0f2f5; color: #999; }
         button { padding: 12px 20px; border-radius: 12px; border: none; background: #007bff; color: white; font-size: 15px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        button:hover { background: #0056b3; }
+        button:hover:not(:disabled) { background: #0056b3; }
+        button:disabled { background: #ccd0d5; cursor: not-allowed; }
         
-        /* 全畫面遮罩彈出視窗（導覽視窗、勝負視窗通用） */
         .overlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 10; }
         .modal { background: white; padding: 30px; border-radius: 24px; text-align: center; max-width: 85%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .modal h2 { margin-top: 0; color: #1a1a1a; }
         .modal p { color: #4e5d6c; line-height: 1.6; margin: 15px 0 25px 0; font-size: 15px; }
         .modal button { width: 100%; background: #28a745; font-size: 16px; padding: 14px; }
-        .modal button:hover { background: #218838; }
     </style>
 </head>
 <body>
@@ -55,16 +46,9 @@
         <h2>🤬 家長怒氣生存遊戲</h2>
         
         <select id="stage-select" onchange="changeStage()">
-            <option value="0">1. 玄關晚歸</option>
-            <option value="1">2. 客廳電燈</option>
-            <option value="2">3. 餐桌手機</option>
-            <option value="3">4. 晚餐遲到</option>
-            <option value="4">5. 廚房洗碗</option>
-            <option value="5">6. 巷口垃圾</option>
-            <option value="6">7. 換裝見人</option>
-            <option value="7">8. 房間整理</option>
-            <option value="8">9. 開箱包裹</option>
-            <option value="9">10. 深夜水果</option>
+            <option value="0">1. 玄關晚歸</option><option value="1">2. 客廳電燈</option><option value="2">3. 餐桌手機</option>
+            <option value="3">4. 晚餐遲到</option><option value="4">5. 廚房洗碗</option><option value="5">6. 巷口垃圾</option>
+            <option value="6">7. 換裝見人</option><option value="7">8. 房間整理</option><option value="8">9. 開箱包裹</option><option value="10">10. 深夜水果</option>
         </select>
         
         <div class="progress-bar"><div id="anger-bar" class="progress-fill"></div></div>
@@ -75,7 +59,7 @@
         </div>
         
         <div class="input-area">
-            <input type="text" id="user-reply" placeholder="講點好聽話安撫長輩吧..." onkeydown="if(event.key==='Enter') sendReply()">
+            <input type="text" id="user-reply" placeholder="講點好聽話安撫長輩吧..." onkeydown="if(event.key==='Enter' && !this.disabled) sendReply()">
             <button onclick="sendReply()">傳送</button>
         </div>
     </div>
@@ -92,16 +76,13 @@
 
     <script>
         let currentAnger = 80;
-        // 為 10 個場景量身定做的馬卡龍配色矩陣
         const bgs = ["#f0f2f5","#e8f5e9","#fff3e0","#fce4ec","#e3f2fd","#f3e5f5","#fff9c4","#efebe9","#e0f7fa","#fbe9e7"];
 
-        // 關卡前導視窗解鎖，正式顯示遊戲主體
         function startGame() { 
             document.getElementById('intro-modal').style.display = 'none'; 
             document.querySelector('.card').style.display = 'block'; 
         }
         
-        // 切換關卡邏輯：同步刷新背景色與引言故事
         async function changeStage() {
             const idx = parseInt(document.getElementById('stage-select').value);
             const res = await fetch('/api/change_stage', { 
@@ -111,59 +92,80 @@
             });
             const data = await res.json();
             
-            // 變更全身背景色彩與前導文字
             document.body.style.backgroundColor = bgs[idx];
             document.getElementById('intro-modal').style.display = 'flex';
             document.getElementById('intro-task').innerText = `🗺️ 關卡：${data.stage_task}`;
             document.getElementById('intro-desc').innerText = data.desc;
             
-            // 刷新聊天室與血條狀態
             document.getElementById('chat-history').innerHTML = `<div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
             currentAnger = 80;
             document.getElementById('anger-bar').style.width = '66.6%';
             document.getElementById('anger-text').innerText = `🔥 家長怒氣值: 80 / 120`;
         }
 
-        // 對話發送與渲染核心機制
+        // 核心修改：加入健全的例外捕捉與防連擊控制
         async function sendReply() {
             const input = document.getElementById('user-reply');
-            const text = input.value.strip ? input.value.strip() : input.value.trim();
+            const button = document.querySelector('.input-area button');
+            const text = input.value.trim();
             if(!text) return;
             
-            const history = document.getElementById('chat-history');
-            // 1. 即時在右側渲染玩家的發言
-            history.innerHTML += `<div class="msg user-msg">😎 ${text}</div>`;
-            input.value = '';
-            history.scrollTop = history.scrollHeight; // 畫面自動滾動底部
+            // 鎖定輸入框與按鈕，防止玩家狂點導致重複發送
+            input.disabled = true;
+            button.disabled = true;
+            button.innerText = "解讀中..";
 
-            // 2. 向後端索取 AI 反饋
-            const res = await fetch('/api/reply', { 
-                method: 'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body: JSON.stringify({reply: text}) 
-            });
-            const data = await res.json();
+            const history = document.getElementById('chat-history');
             
-            // 3. 在左側渲染長輩的罵人回應
-            history.innerHTML += `<div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
-            
-            // 4. 音效防護網：若數值上升，強迫觸發音效器
-            if (data.anger > currentAnger) {
-                const sound = document.getElementById('angry-sound');
-                sound.currentTime = 0;
-                sound.play().catch(()=>{}); // 捕捉並忽略瀏覽器未互動前的限制警告
-            }
-            
-            // 5. 強制同步更新全域狀態與血條 UI
-            currentAnger = data.anger;
-            document.getElementById('anger-text').innerText = `🔥 家長怒氣值: ${data.anger} / 120`;
-            document.getElementById('anger-bar').style.width = `${(data.anger/120)*100}%`;
-            history.scrollTop = history.scrollHeight;
-            
-            // 6. 勝負判定攔截
-            if (data.status !== "OK") { 
-                document.getElementById('game-modal').style.display = 'flex'; 
-                document.getElementById('modal-title').innerText = data.status === "WIN" ? "🎉 恭喜你！成功安撫了長輩！" : "💀 挑戰失敗！長輩已經徹底氣炸了！"; 
+            try {
+                const res = await fetch('/api/reply', { 
+                    method: 'POST', 
+                    headers:{'Content-Type':'application/json'}, 
+                    body: JSON.stringify({reply: text}) 
+                });
+                
+                if (!res.ok) throw new Error("Network Response Failure");
+                const data = await res.json();
+                
+                // 攔截後端傳回來的 Gemini 連線失敗訊號
+                if (data.status === "NETWORK_ERROR") {
+                    alert("⚠️ 長輩突然陷入沉思（網路不穩），剛剛那句他沒聽清楚，請再試一次！");
+                    input.value = text; // 把剛剛打的字貼心地還給玩家
+                    return;
+                }
+
+                // 正常連線成功，清空輸入框並渲染對話
+                input.value = '';
+                history.innerHTML += `<div class="msg user-msg">😎 ${text}</div>`;
+                history.innerHTML += `<div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
+                
+                if (data.anger > currentAnger) {
+                    const sound = document.getElementById('angry-sound');
+                    sound.currentTime = 0;
+                    sound.play().catch(()=>{});
+                }
+                
+                currentAnger = data.anger;
+                document.getElementById('anger-text').innerText = `🔥 家長怒氣值: ${data.anger} / 120`;
+                document.getElementById('anger-bar').style.width = `${(data.anger/120)*100}%`;
+                
+                if (data.status !== "OK") { 
+                    document.getElementById('game-modal').style.display = 'flex'; 
+                    document.getElementById('modal-title').innerText = data.status === "WIN" ? "🎉 恭喜你！成功安撫了長輩！" : "💀 挑戰失敗！長輩已經徹底氣炸了！"; 
+                }
+
+            } catch (error) {
+                // 捕捉瀏覽器端斷網、超時等外在連線異常
+                console.error("連線錯誤:", error);
+                alert("📡 當前網路連線不穩定，訊息未能成功送達！請檢查網路後重試。");
+                input.value = text; // 還原文字，避免玩家崩潰
+            } finally {
+                // 無論成功失敗，最後絕對解鎖介面
+                input.disabled = false;
+                button.disabled = false;
+                button.innerText = "傳送";
+                history.scrollTop = history.scrollHeight;
+                input.focus();
             }
         }
     </script>
