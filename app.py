@@ -5,14 +5,12 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-# 用於加密 Session 的安全金鑰
-app.secret_key = "hardcore_parent_network_armor_key"
+app.secret_key = "hardcore_parent_clean_language_key"
 
-# 雲端安全架構：從系統環境變數讀取 API Key
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# 10 大精心編排的生活化關卡故事資料庫
+# 10 大生活化關卡故事資料庫
 game_story = """
 {
   "stages": [
@@ -48,7 +46,6 @@ def call_gemini_api(stage_task, parent_speech, user_reply, current_anger):
         )
         return json.loads(response.text.strip())
     except:
-        # 核心修改：網路異常時打上 error 標記，不再硬塞會讓人出戲的罐頭台詞
         return {"is_error": True}
 
 @app.route("/")
@@ -78,6 +75,18 @@ def reply():
     user_reply = request.json.get("reply", "").strip()
     current_stage = STAGES[session.get("stage_idx", 0)]
     
+    # 🛑 【核心新增：髒話檢測霸王條款】
+    # 你可以自由增減這個列表中的關鍵字
+    curse_keywords = ["幹", "靠北", "他媽", "機掰", "三小", "垃圾", "廢物", "白癡"]
+    if any(k in user_reply for k in curse_keywords):
+        session["anger"] = 120  # 怒氣直接全滿
+        session["last_speech"] = "『你竟敢跟我說髒話？！書讀到哪裡去了？！誰教你這麼沒家教的？！給我跪下！』"
+        return jsonify({
+            "parent_speech": session["last_speech"],
+            "anger": 120,
+            "status": "LOSE"  # 直接判輸
+        })
+
     # 呼叫 AI 獲取評分
     ai_result = call_gemini_api(
         current_stage["task"], 
@@ -86,23 +95,20 @@ def reply():
         session.get("anger", 80)
     )
     
-    # 核心修改：如果判定 Gemini API 連線異常，立刻回傳網路錯誤狀態給前端攔截
     if ai_result.get("is_error"):
         return jsonify({"status": "NETWORK_ERROR"})
 
     score = ai_result.get("anger_change", 10)
     
-    # 後端防禦性攔截（道歉霸王條款）
+    # 後端防禦性攔截（溫和道歉條款）
     apology_keywords = ["對不起", "抱歉", "我錯", "歹勢", "sorry"]
     if any(k in user_reply.lower() for k in apology_keywords):
         score = -30  
 
-    # 計算新怒氣值（範圍限制在 0~120）
     anger = max(0, min(120, session.get("anger", 80) + score))
     session["anger"] = anger
     session["last_speech"] = ai_result.get("parent_comeback", "...")
     
-    # 勝負判定
     status = "WIN" if anger <= 0 else ("LOSE" if anger >= 120 else "OK")
     
     return jsonify({

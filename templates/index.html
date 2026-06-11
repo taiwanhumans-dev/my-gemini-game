@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家長怒氣生存遊戲 - 網路黃金防禦版</title>
+    <title>家長怒氣生存遊戲 - 家教檢測版</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 20px auto; background: #f0f2f5; padding: 10px; transition: background 0.5s ease; }
         .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: none; }
@@ -12,7 +12,6 @@
         .progress-fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #ff4d4d); width: 66.6%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         #anger-text { font-weight: bold; color: #4b5563; margin-top: 5px; font-size: 14px; text-align: right; }
         
-        /* LINE 風格對話框架構 */
         .history { height: 380px; overflow-y: auto; padding: 15px; background: #e5ddd5; border-radius: 15px; margin: 15px 0; display: flex; flex-direction: column; box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); }
         .msg { max-width: 80%; margin: 6px 0; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5; word-wrap: break-word; }
         .parent-msg { align-self: flex-start; background: white; color: #1c1e21; border-bottom-left-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
@@ -48,7 +47,7 @@
         <select id="stage-select" onchange="changeStage()">
             <option value="0">1. 玄關晚歸</option><option value="1">2. 客廳電燈</option><option value="2">3. 餐桌手機</option>
             <option value="3">4. 晚餐遲到</option><option value="4">5. 廚房洗碗</option><option value="5">6. 巷口垃圾</option>
-            <option value="6">7. 換裝見人</option><option value="7">8. 房間整理</option><option value="8">9. 開箱包裹</option><option value="10">10. 深夜水果</option>
+            <option value="6">7. 換裝見人</option><option value="7">8. 房間整理</option><option value="8">9. 開箱包裹</option><option value="9">10. 深夜水果</option>
         </select>
         
         <div class="progress-bar"><div id="anger-bar" class="progress-fill"></div></div>
@@ -103,14 +102,12 @@
             document.getElementById('anger-text').innerText = `🔥 家長怒氣值: 80 / 120`;
         }
 
-        // 核心修改：加入健全的例外捕捉與防連擊控制
         async function sendReply() {
             const input = document.getElementById('user-reply');
             const button = document.querySelector('.input-area button');
             const text = input.value.trim();
             if(!text) return;
             
-            // 鎖定輸入框與按鈕，防止玩家狂點導致重複發送
             input.disabled = true;
             button.disabled = true;
             button.innerText = "解讀中..";
@@ -127,17 +124,15 @@
                 if (!res.ok) throw new Error("Network Response Failure");
                 const data = await res.json();
                 
-                // 攔截後端傳回來的 Gemini 連線失敗訊號
                 if (data.status === "NETWORK_ERROR") {
                     alert("⚠️ 長輩突然陷入沉思（網路不穩），剛剛那句他沒聽清楚，請再試一次！");
-                    input.value = text; // 把剛剛打的字貼心地還給玩家
+                    input.value = text;
                     return;
                 }
 
-                // 正常連線成功，清空輸入框並渲染對話
                 input.value = '';
                 history.innerHTML += `<div class="msg user-msg">😎 ${text}</div>`;
-                history.innerHTML += `<div class="msg parent-msg">👵 『${data.parent_speech}』</div>`;
+                history.innerHTML += `<div class="msg parent-msg">👵 ${data.parent_speech}</div>`;
                 
                 if (data.anger > currentAnger) {
                     const sound = document.getElementById('angry-sound');
@@ -155,12 +150,10 @@
                 }
 
             } catch (error) {
-                // 捕捉瀏覽器端斷網、超時等外在連線異常
                 console.error("連線錯誤:", error);
                 alert("📡 當前網路連線不穩定，訊息未能成功送達！請檢查網路後重試。");
-                input.value = text; // 還原文字，避免玩家崩潰
+                input.value = text;
             } finally {
-                // 無論成功失敗，最後絕對解鎖介面
                 input.disabled = false;
                 button.disabled = false;
                 button.innerText = "傳送";
